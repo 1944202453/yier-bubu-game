@@ -15,43 +15,85 @@ body {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
-  display: flex; align-items: center; justify-content: center;
 }
-canvas { display: block; max-width: 100vw; max-height: 100vh; }
 
-/* Overlay screens */
+/* ── Game container ── */
+#game-container {
+  position: relative;
+  width: 100vw; height: 100vh;
+  max-width: 500px; max-height: 850px;
+  margin: 0 auto;
+  overflow: hidden;
+  background: linear-gradient(180deg, #e8f4f8 0%, #fce4ec 50%, #f8e8f0 100%);
+}
+#game-container.full { max-width: 100vw; max-height: 100vh; }
+
+canvas {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+}
+
+/* ── Character sprites (on top of canvas) ── */
+#player-sprite {
+  position: absolute;
+  pointer-events: none;
+  transition: none;
+  z-index: 5;
+}
+#bubu-sprite {
+  position: absolute;
+  pointer-events: none;
+  z-index: 4;
+}
+#bubu-label {
+  position: absolute;
+  pointer-events: none;
+  z-index: 4;
+  text-align: center;
+  font-size: clamp(10px, 2.5vw, 14px);
+  color: #8b5e3c;
+  font-weight: bold;
+  text-shadow: 0 0 6px rgba(255,255,255,0.8);
+}
+
+/* ── Start & Game Over screens ── */
 .overlay {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  pointer-events: none; z-index: 10;
+  pointer-events: none; z-index: 20;
 }
 .overlay.active { pointer-events: auto; }
 
 #start-screen {
-  background: rgba(255,235,238,0.92);
+  background: rgba(255,235,238,0.94);
   text-align: center;
   transition: opacity 0.5s;
 }
 #start-screen.hidden { opacity: 0; pointer-events: none; }
+#start-screen .preview-chars {
+  display: flex; justify-content: center; align-items: center;
+  gap: 10px; margin-bottom: 0.5em;
+}
+#start-screen .preview-chars img {
+  height: clamp(60px, 15vw, 100px);
+  image-rendering: auto;
+}
 #start-screen h1 {
-  font-size: clamp(2rem, 6vw, 3.5rem);
+  font-size: clamp(2rem, 6vw, 3.3rem);
   color: #d4687a;
-  margin-bottom: 0.3em;
+  margin-bottom: 0.2em;
   text-shadow: 2px 2px 0 rgba(255,255,255,0.8);
 }
 #start-screen .sub {
-  font-size: clamp(0.9rem, 2.5vw, 1.3rem);
+  font-size: clamp(0.85rem, 2.5vw, 1.2rem);
   color: #b0806a;
-  margin-bottom: 1em;
-}
-#start-screen .chars {
-  font-size: clamp(3rem, 10vw, 6rem);
-  margin-bottom: 0.3em;
+  margin-bottom: 0.6em;
 }
 #start-screen .meaning {
-  font-size: clamp(0.7rem, 2vw, 1rem);
+  font-size: clamp(0.7rem, 2vw, 0.95rem);
   color: #c09080;
-  max-width: 80%;
+  max-width: 85%;
   line-height: 1.8;
   margin-bottom: 1.5em;
 }
@@ -64,7 +106,7 @@ canvas { display: block; max-width: 100vw; max-height: 100vh; }
   transition: transform 0.2s, box-shadow 0.2s;
   font-family: inherit;
 }
-#start-btn:hover { transform: scale(1.05); box-shadow: 0 6px 28px rgba(232,120,138,0.5); }
+#start-btn:hover { transform: scale(1.05); }
 #start-btn:active { transform: scale(0.97); }
 
 #game-over {
@@ -95,65 +137,117 @@ canvas { display: block; max-width: 100vw; max-height: 100vh; }
 }
 #restart-btn:hover { transform: scale(1.05); }
 #restart-btn:active { transform: scale(0.97); }
+
+/* ── HUD overlay ── */
+#hud {
+  position: absolute; top: 0; left: 0; width: 100%;
+  padding: 8px 14px;
+  display: flex; justify-content: space-between; align-items: center;
+  z-index: 15; pointer-events: none;
+  font-size: clamp(14px, 3.5vw, 20px);
+}
+#hud .score-text { color: #c07080; font-weight: bold; }
+#hud .lives-text { letter-spacing: 2px; }
+#hud .shield-text {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  color: #5b9bd5; font-size: clamp(11px, 2.5vw, 15px);
+  white-space: nowrap;
+}
 </style>
 </head>
 <body>
 
-<canvas id="game"></canvas>
+<div id="game-container">
+  <canvas id="game"></canvas>
+  <img id="player-sprite" src="一二1.gif" alt="一二">
+  <img id="bubu-sprite" src="布布1.gif" alt="布布">
+  <div id="bubu-label"></div>
 
-<!-- Start Screen -->
-<div id="start-screen" class="overlay active">
-  <div class="chars">🐼🐻</div>
-  <h1>常想一二</h1>
-  <p class="sub">一二布布 · 治愈小游戏</p>
-  <p class="meaning">人生不如意十之八九<br>常想一二，不思八九</p>
-  <button id="start-btn" onclick="startGame()">开 始 游 戏</button>
-</div>
+  <!-- HUD -->
+  <div id="hud">
+    <span class="score-text" id="hud-score">💛 0</span>
+    <span class="shield-text" id="hud-shield"></span>
+    <span class="lives-text" id="hud-lives">❤️❤️❤️</span>
+  </div>
 
-<!-- Game Over -->
-<div id="game-over" class="overlay">
-  <h2>游戏结束</h2>
-  <div class="score-final" id="final-score">0</div>
-  <div class="score-label">收集的幸福</div>
-  <div class="high-score" id="high-score-text">最高纪录：0</div>
-  <button id="restart-btn" onclick="restartGame()">再 来 一 次</button>
+  <!-- Start Screen -->
+  <div id="start-screen" class="overlay active">
+    <div class="preview-chars">
+      <img src="一二1.gif" alt="一二">
+      <img src="布布1.gif" alt="布布">
+    </div>
+    <h1>常想一二</h1>
+    <p class="sub">一二布布 · 治愈小游戏</p>
+    <p class="meaning">人生不如意十之八九<br>常想一二，不思八九</p>
+    <button id="start-btn" onclick="startGame()">开 始 游 戏</button>
+  </div>
+
+  <!-- Game Over -->
+  <div id="game-over" class="overlay">
+    <h2>游戏结束</h2>
+    <div class="score-final" id="final-score">0</div>
+    <div class="score-label">收集的幸福</div>
+    <div class="high-score" id="high-score-text">最高纪录：0</div>
+    <button id="restart-btn" onclick="restartGame()">再 来 一 次</button>
+  </div>
 </div>
 
 <script>
 // ═══════════════════════════════════════
-//  CANVAS SETUP
+//  DOM ELEMENTS
 // ═══════════════════════════════════════
+const container = document.getElementById('game-container');
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
+const playerSprite = document.getElementById('player-sprite');
+const bubuSprite = document.getElementById('bubu-sprite');
+const bubuLabel = document.getElementById('bubu-label');
+const hudScore = document.getElementById('hud-score');
+const hudLives = document.getElementById('hud-lives');
+const hudShield = document.getElementById('hud-shield');
 
-let W, H, scale;
+// ═══════════════════════════════════════
+//  CANVAS SIZE
+// ═══════════════════════════════════════
+let W, H;
 
 function resize() {
-  const maxW = Math.min(window.innerWidth, 500);
-  const maxH = Math.min(window.innerHeight, 850);
-  const ratio = 500 / 850;
-  if (maxW / maxH > ratio) {
-    H = maxH; W = H * ratio;
-  } else {
-    W = maxW; H = W / ratio;
-  }
+  const rect = container.getBoundingClientRect();
+  W = rect.width;
+  H = rect.height;
   canvas.width = W;
   canvas.height = H;
-  canvas.style.width = W + 'px';
-  canvas.style.height = H + 'px';
 }
 resize();
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 200));
 
 // ═══════════════════════════════════════
-//  SOUND (Web Audio API oscillators)
+//  CHARACTER IMAGES
+// ═══════════════════════════════════════
+const yierImgs = ['一二1.gif', '一二二.gif'];
+const bubuImgs = ['布布1.gif', '布布2.gif'];
+
+let yierIdx = 0;
+let bubuIdx = 0;
+let animTimer = 0;
+
+function switchPlayerFrame() {
+  yierIdx = (yierIdx + 1) % yierImgs.length;
+  playerSprite.src = yierImgs[yierIdx];
+}
+function switchBubuFrame() {
+  bubuIdx = (bubuIdx + 1) % bubuImgs.length;
+  bubuSprite.src = bubuImgs[bubuIdx];
+}
+
+// ═══════════════════════════════════════
+//  SOUND
 // ═══════════════════════════════════════
 let audioCtx = null;
 function initAudio() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 }
-
 function playSound(freq, type, duration, vol = 0.1) {
   if (!audioCtx) return;
   const t = audioCtx.currentTime;
@@ -163,12 +257,9 @@ function playSound(freq, type, duration, vol = 0.1) {
   osc.frequency.setValueAtTime(freq, t);
   gain.gain.setValueAtTime(vol, t);
   gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start(t);
-  osc.stop(t + duration);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(t); osc.stop(t + duration);
 }
-
 function sfxCollect() { playSound(880, 'sine', 0.15); setTimeout(() => playSound(1100, 'sine', 0.12), 80); }
 function sfxHit() { playSound(150, 'triangle', 0.25, 0.08); }
 function sfxPowerUp() { playSound(660, 'sine', 0.1); setTimeout(() => playSound(880, 'sine', 0.1), 100); setTimeout(() => playSound(1100, 'sine', 0.15), 200); }
@@ -186,132 +277,39 @@ let frame = 0;
 let invincible = 0;
 
 // ═══════════════════════════════════════
-//  CHARACTER DRAWING
-// ═══════════════════════════════════════
-function drawYier(x, y, s) {
-  // s = scale (size)
-  ctx.save();
-  ctx.translate(x, y);
-
-  // Left foot
-  ctx.fillStyle = '#2a2a2a';
-  ctx.beginPath(); ctx.ellipse(-s * 0.18, s * 0.45, s * 0.13, s * 0.09, 0, 0, Math.PI * 2); ctx.fill();
-  // Right foot
-  ctx.beginPath(); ctx.ellipse(s * 0.18, s * 0.45, s * 0.13, s * 0.09, 0, 0, Math.PI * 2); ctx.fill();
-
-  // Body (white round)
-  ctx.fillStyle = '#fefefe';
-  ctx.beginPath(); ctx.ellipse(0, 0, s * 0.35, s * 0.4, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#e8e0e0'; ctx.lineWidth = s * 0.02;
-  ctx.beginPath(); ctx.ellipse(0, 0, s * 0.35, s * 0.4, 0, 0, Math.PI * 2); ctx.stroke();
-
-  // Ears (black round)
-  ctx.fillStyle = '#1a1a1a';
-  ctx.beginPath(); ctx.ellipse(-s * 0.22, -s * 0.3, s * 0.12, s * 0.13, -0.3, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(s * 0.22, -s * 0.3, s * 0.12, s * 0.13, 0.3, 0, Math.PI * 2); ctx.fill();
-
-  // Inner ear pink
-  ctx.fillStyle = '#f8c8d0';
-  ctx.beginPath(); ctx.ellipse(-s * 0.22, -s * 0.3, s * 0.06, s * 0.07, -0.3, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(s * 0.22, -s * 0.3, s * 0.06, s * 0.07, 0.3, 0, Math.PI * 2); ctx.fill();
-
-  // Bow tie
-  ctx.fillStyle = '#1a1a1a';
-  ctx.beginPath(); ctx.moveTo(0, -s * 0.02); ctx.lineTo(-s * 0.18, -s * 0.1); ctx.lineTo(-s * 0.18, s * 0.06); ctx.lineTo(0, -s * 0.02); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(0, -s * 0.02); ctx.lineTo(s * 0.18, -s * 0.1); ctx.lineTo(s * 0.18, s * 0.06); ctx.lineTo(0, -s * 0.02); ctx.fill();
-  ctx.beginPath(); ctx.arc(0, -s * 0.02, s * 0.05, 0, Math.PI * 2); ctx.fill();
-
-  // Eyes
-  ctx.fillStyle = '#1a1a1a';
-  ctx.beginPath(); ctx.arc(-s * 0.1, -s * 0.05, s * 0.04, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(s * 0.1, -s * 0.05, s * 0.04, 0, Math.PI * 2); ctx.fill();
-  // Eye shine
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.arc(-s * 0.09, -s * 0.07, s * 0.015, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(s * 0.11, -s * 0.07, s * 0.015, 0, Math.PI * 2); ctx.fill();
-
-  // Blush
-  ctx.fillStyle = 'rgba(255,180,180,0.5)';
-  ctx.beginPath(); ctx.ellipse(-s * 0.2, s * 0.05, s * 0.08, s * 0.05, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(s * 0.2, s * 0.05, s * 0.08, s * 0.05, 0, 0, Math.PI * 2); ctx.fill();
-
-  // Mouth (tiny smile)
-  ctx.strokeStyle = '#c09090'; ctx.lineWidth = s * 0.015;
-  ctx.beginPath(); ctx.arc(0, s * 0.02, s * 0.06, 0.1, Math.PI - 0.1); ctx.stroke();
-
-  ctx.restore();
-}
-
-function drawBubu(x, y, s) {
-  ctx.save();
-  ctx.translate(x, y);
-
-  // Feet
-  ctx.fillStyle = '#5a3a28';
-  ctx.beginPath(); ctx.ellipse(-s * 0.18, s * 0.45, s * 0.14, s * 0.1, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(s * 0.18, s * 0.45, s * 0.14, s * 0.1, 0, 0, Math.PI * 2); ctx.fill();
-
-  // Body (brown)
-  ctx.fillStyle = '#c48b5c';
-  ctx.beginPath(); ctx.ellipse(0, 0, s * 0.35, s * 0.4, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#a07040'; ctx.lineWidth = s * 0.02;
-  ctx.beginPath(); ctx.ellipse(0, 0, s * 0.35, s * 0.4, 0, 0, Math.PI * 2); ctx.stroke();
-
-  // Belly patch
-  ctx.fillStyle = '#f5e0c8';
-  ctx.beginPath(); ctx.ellipse(0, s * 0.08, s * 0.2, s * 0.22, 0, 0, Math.PI * 2); ctx.fill();
-
-  // Ears (round brown)
-  ctx.fillStyle = '#a06840';
-  ctx.beginPath(); ctx.arc(-s * 0.22, -s * 0.3, s * 0.13, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(s * 0.22, -s * 0.3, s * 0.13, 0, Math.PI * 2); ctx.fill();
-  // Inner ear
-  ctx.fillStyle = '#d4a880';
-  ctx.beginPath(); ctx.arc(-s * 0.22, -s * 0.3, s * 0.07, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(s * 0.22, -s * 0.3, s * 0.07, 0, Math.PI * 2); ctx.fill();
-
-  // Eyes (gentle)
-  ctx.fillStyle = '#3a2010';
-  ctx.beginPath(); ctx.arc(-s * 0.1, -s * 0.06, s * 0.04, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(s * 0.1, -s * 0.06, s * 0.04, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.arc(-s * 0.09, -s * 0.08, s * 0.015, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(s * 0.11, -s * 0.08, s * 0.015, 0, Math.PI * 2); ctx.fill();
-
-  // Nose
-  ctx.fillStyle = '#5a3020';
-  ctx.beginPath(); ctx.arc(0, s * 0.0, s * 0.04, 0, Math.PI * 2); ctx.fill();
-
-  // Gentle smile
-  ctx.strokeStyle = '#7a5040'; ctx.lineWidth = s * 0.015;
-  ctx.beginPath(); ctx.arc(0, s * 0.04, s * 0.08, 0.1, Math.PI - 0.1); ctx.stroke();
-
-  // Blush
-  ctx.fillStyle = 'rgba(200,150,130,0.4)';
-  ctx.beginPath(); ctx.ellipse(-s * 0.22, s * 0.05, s * 0.07, s * 0.04, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(s * 0.22, s * 0.05, s * 0.07, s * 0.04, 0, 0, Math.PI * 2); ctx.fill();
-
-  ctx.restore();
-}
-
-// ═══════════════════════════════════════
-//  PLAYER (一二)
+//  PLAYER
 // ═══════════════════════════════════════
 const player = {
-  x: 0, y: 0, w: 0, h: 0,
-  baseSize: 45,
+  x: 0, y: 0,
+  w: 80, h: 90,   // display size
   speed: 0,
   targetX: 0,
 };
-let playerScale = 1;
 
 function resetPlayer() {
   player.x = W / 2;
-  player.y = H * 0.85;
-  player.w = player.baseSize * 1.4;
-  player.h = player.baseSize * 1.6;
+  player.y = H * 0.82;
   player.speed = W * 0.008;
   player.targetX = player.x;
+  playerSprite.src = yierImgs[0];
+  yierIdx = 0;
+  updatePlayerSprite();
+}
+
+function updatePlayerSprite() {
+  const scaleX = player.w / 100; // base sizing
+  const scaleY = player.h / 100;
+  playerSprite.style.width = player.w + 'px';
+  playerSprite.style.height = player.h + 'px';
+  playerSprite.style.left = (player.x - player.w / 2) + 'px';
+  playerSprite.style.top = (player.y - player.h / 2) + 'px';
+
+  // Invisible during invincibility blink
+  if (invincible > 0 && Math.floor(invincible / 8) % 2 === 0) {
+    playerSprite.style.opacity = '0.3';
+  } else {
+    playerSprite.style.opacity = '1';
+  }
 }
 
 // ═══════════════════════════════════════
@@ -332,47 +330,61 @@ const BAD_ITEMS = [
 
 let items = [];
 let itemSpawnTimer = 0;
-let itemSpawnRate = 35; // frames between spawns
+let itemSpawnRate = 35;
 
 function spawnItem() {
-  const isGood = Math.random() < 0.7; // 70% good, 30% bad
+  const isGood = Math.random() < 0.7;
   const pool = isGood ? GOOD_ITEMS : BAD_ITEMS;
   const template = pool[Math.floor(Math.random() * pool.length)];
-
   items.push({
     x: W * 0.1 + Math.random() * W * 0.8,
     y: -30,
-    size: 24 + Math.random() * 16,
+    size: 22 + Math.random() * 16,
     speed: 1.2 + Math.random() * 2.5,
     wobble: Math.random() * Math.PI * 2,
     wobbleSpeed: 0.02 + Math.random() * 0.04,
     wobbleAmp: 0.3 + Math.random() * 0.8,
     type: isGood ? 'good' : 'bad',
     template: template,
-    collected: false,
-    alpha: 1,
   });
 }
 
 // ═══════════════════════════════════════
 //  BUBU POWER-UP
 // ═══════════════════════════════════════
-let bubu = null; // { x, y, alpha, type }
+let bubu = null;
 let bubuTimer = 0;
-const BUBU_INTERVAL = 600; // frames (~10 sec at 60fps)
+const BUBU_INTERVAL = 550;
 
 function spawnBubu() {
   bubu = {
-    x: W + 80,
-    y: H * 0.25 + Math.random() * H * 0.3,
-    alpha: 1,
+    x: W + 100,
+    y: H * 0.2 + Math.random() * H * 0.35,
     type: Math.random() < 0.5 ? 'shield' : 'magnet',
-    size: 40,
+    w: 70, h: 80,
   };
+  bubuSprite.style.display = 'block';
+  bubuSprite.src = bubuImgs[0];
+  bubuIdx = 0;
+  updateBubuSprite();
+}
+
+function updateBubuSprite() {
+  if (!bubu) { bubuSprite.style.display = 'none'; bubuLabel.style.display = 'none'; return; }
+  bubuSprite.style.width = bubu.w + 'px';
+  bubuSprite.style.height = bubu.h + 'px';
+  bubuSprite.style.left = (bubu.x - bubu.w / 2) + 'px';
+  bubuSprite.style.top = (bubu.y - bubu.h / 2) + 'px';
+
+  bubuLabel.style.display = 'block';
+  bubuLabel.style.left = (bubu.x - 30) + 'px';
+  bubuLabel.style.top = (bubu.y - bubu.h / 2 - 22) + 'px';
+  bubuLabel.style.width = '60px';
+  bubuLabel.textContent = bubu.type === 'shield' ? '🛡️护盾' : '🧲磁铁';
 }
 
 // ═══════════════════════════════════════
-//  PARTICLES
+//  PARTICLES (Canvas)
 // ═══════════════════════════════════════
 let particles = [];
 
@@ -384,14 +396,13 @@ function spawnParticles(x, y, color, count = 10) {
       vy: -3 - Math.random() * 4,
       life: 1,
       decay: 0.02 + Math.random() * 0.04,
-      color,
-      size: 2 + Math.random() * 4,
+      color, size: 2 + Math.random() * 4,
     });
   }
 }
 
 // ═══════════════════════════════════════
-//  FLOATING CLOUDS (background)
+//  CLOUDS (Canvas background)
 // ═══════════════════════════════════════
 let clouds = [];
 function initClouds() {
@@ -399,18 +410,17 @@ function initClouds() {
   for (let i = 0; i < 6; i++) {
     clouds.push({
       x: Math.random() * W,
-      y: Math.random() * H * 0.6,
+      y: Math.random() * H * 0.55,
       w: 40 + Math.random() * 80,
       h: 20 + Math.random() * 30,
       speed: 0.3 + Math.random() * 0.5,
-      alpha: 0.15 + Math.random() * 0.2,
+      alpha: 0.12 + Math.random() * 0.18,
     });
   }
 }
-initClouds();
 
 // ═══════════════════════════════════════
-//  INPUT HANDLING
+//  INPUT
 // ═══════════════════════════════════════
 let keys = { left: false, right: false };
 let touchActive = false;
@@ -426,45 +436,42 @@ window.addEventListener('keyup', e => {
   if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
 });
 
-canvas.addEventListener('touchstart', e => {
+container.addEventListener('touchstart', e => {
   e.preventDefault();
   initAudio();
   if (gameState === STATE.IDLE) { startGame(); return; }
   if (gameState === STATE.OVER) { restartGame(); return; }
   touchActive = true;
-  const rect = canvas.getBoundingClientRect();
-  touchX = (e.touches[0].clientX - rect.left) * (W / rect.width);
-  player.targetX = touchX;
+  touchX = e.touches[0].clientX - container.getBoundingClientRect().left;
+  player.targetX = (touchX / W) * W;
 });
-canvas.addEventListener('touchmove', e => {
+container.addEventListener('touchmove', e => {
   e.preventDefault();
   if (!touchActive) return;
-  const rect = canvas.getBoundingClientRect();
-  touchX = (e.touches[0].clientX - rect.left) * (W / rect.width);
-  player.targetX = touchX;
+  touchX = e.touches[0].clientX - container.getBoundingClientRect().left;
+  player.targetX = (touchX / W) * W;
 });
-canvas.addEventListener('touchend', () => { touchActive = false; });
+container.addEventListener('touchend', () => { touchActive = false; });
 
-canvas.addEventListener('mousedown', e => {
+container.addEventListener('mousedown', e => {
   initAudio();
   if (gameState === STATE.IDLE) { startGame(); return; }
   if (gameState === STATE.OVER) { restartGame(); return; }
   touchActive = true;
-  const rect = canvas.getBoundingClientRect();
-  player.targetX = (e.clientX - rect.left) * (W / rect.width);
+  player.targetX = e.clientX - container.getBoundingClientRect().left;
 });
-canvas.addEventListener('mousemove', e => {
+container.addEventListener('mousemove', e => {
   if (!touchActive) return;
-  const rect = canvas.getBoundingClientRect();
-  player.targetX = (e.clientX - rect.left) * (W / rect.width);
+  player.targetX = e.clientX - container.getBoundingClientRect().left;
 });
-canvas.addEventListener('mouseup', () => { touchActive = false; });
+container.addEventListener('mouseup', () => { touchActive = false; });
 
 // ═══════════════════════════════════════
 //  GAME LOGIC
 // ═══════════════════════════════════════
 function startGame() {
   initAudio();
+  resize();
   gameState = STATE.PLAYING;
   score = 0;
   lives = 3;
@@ -475,9 +482,14 @@ function startGame() {
   bubuTimer = 0;
   itemSpawnTimer = 0;
   itemSpawnRate = 35;
+  animTimer = 0;
   resetPlayer();
+  initClouds();
+  bubuSprite.style.display = 'none';
+  bubuLabel.style.display = 'none';
   document.getElementById('start-screen').classList.add('hidden');
   document.getElementById('game-over').classList.remove('active');
+  updateHUD();
 }
 
 function restartGame() { startGame(); }
@@ -489,33 +501,52 @@ function endGame() {
     highScore = score;
     localStorage.setItem('bubu_highscore', highScore);
   }
+  playerSprite.style.opacity = '1';
+  bubuSprite.style.display = 'none';
+  bubuLabel.style.display = 'none';
   document.getElementById('final-score').textContent = score;
   document.getElementById('high-score-text').textContent = '最高纪录：' + highScore;
   document.getElementById('game-over').classList.add('active');
 }
 
+function updateHUD() {
+  hudScore.textContent = '💛 ' + score;
+  let hearts = '';
+  for (let i = 0; i < lives; i++) hearts += '❤️';
+  for (let i = lives; i < 3; i++) hearts += '🖤';
+  hudLives.textContent = hearts;
+  hudShield.textContent = (invincible > 0) ? '🛡️ ' + Math.ceil(invincible / 60) + 's' : '';
+}
+
 function update() {
   if (gameState !== STATE.PLAYING) return;
   frame++;
+  animTimer++;
+
+  // Animate character frames (swap every 30 frames / 0.5s)
+  if (animTimer % 30 === 0) switchPlayerFrame();
+  if (bubu && animTimer % 25 === 0) switchBubuFrame();
 
   // Move player
   if (keys.left || keys.right) {
     touchActive = false;
-    if (keys.left) player.targetX = player.x - player.speed * 3;
-    if (keys.right) player.targetX = player.x + player.speed * 3;
+    if (keys.left) player.targetX = Math.max(0, player.x - player.speed * 3.5);
+    if (keys.right) player.targetX = Math.min(W, player.x + player.speed * 3.5);
   }
-  // Smooth follow
   const dx = player.targetX - player.x;
-  player.x += dx * 0.2;
-  // Clamp
+  player.x += dx * 0.22;
   player.x = Math.max(player.w / 2, Math.min(W - player.w / 2, player.x));
+
+  // Player facing direction
+  playerSprite.style.transform = (dx < -0.5) ? 'scaleX(-1)' : (dx > 0.5 ? 'scaleX(1)' : playerSprite.style.transform);
+
+  updatePlayerSprite();
 
   // Spawn items
   itemSpawnTimer++;
   if (itemSpawnTimer >= itemSpawnRate) {
     itemSpawnTimer = 0;
     spawnItem();
-    // Gradually increase difficulty
     if (frame % 300 === 0 && itemSpawnRate > 18) itemSpawnRate--;
   }
 
@@ -527,39 +558,31 @@ function update() {
     item.x = Math.max(item.size / 2, Math.min(W - item.size / 2, item.x));
 
     // Collision with player
-    if (!item.collected) {
-      const px = player.x, py = player.y;
-      const pw = player.w * 0.6, ph = player.h * 0.6;
-      const ix = item.x, iy = item.y, is = item.size;
-
-      if (ix > px - pw && ix < px + pw && iy > py - ph && iy < py + ph) {
-        item.collected = true;
-        if (item.type === 'good') {
-          if (invincible <= 0) {
-            score += item.template.points;
-            sfxCollect();
-            spawnParticles(item.x, item.y, '#ffb8c6', 8);
-          }
-        } else {
-          if (invincible <= 0) {
-            lives -= item.template.damage;
-            sfxHit();
-            spawnParticles(item.x, item.y, '#8899bb', 12);
-            invincible = 90; // 1.5 sec invincibility
-            if (lives <= 0) { lives = 0; endGame(); return; }
-          }
+    const px = player.x, py = player.y;
+    const pw = player.w * 0.5, ph = player.h * 0.5;
+    if (item.x > px - pw && item.x < px + pw && item.y > py - ph && item.y < py + ph) {
+      if (item.type === 'good') {
+        score += item.template.points;
+        sfxCollect();
+        spawnParticles(item.x, item.y, '#ffb8c6', 8);
+      } else {
+        if (invincible <= 0) {
+          lives -= item.template.damage;
+          sfxHit();
+          spawnParticles(item.x, item.y, '#8899bb', 12);
+          invincible = 90;
+          if (lives <= 0) { lives = 0; endGame(); return; }
         }
       }
+      item.y = H + 100; // mark for removal
     }
   }
+  items = items.filter(item => item.y < H + 60);
 
-  // Clean up off-screen / collected items
-  items = items.filter(item => item.y < H + 60 && !item.collected);
-
-  // Invincibility countdown
+  // Invincibility
   if (invincible > 0) invincible--;
 
-  // Bubu power-up
+  // Bubu
   if (!bubu) {
     bubuTimer++;
     if (bubuTimer >= BUBU_INTERVAL) {
@@ -567,16 +590,16 @@ function update() {
       spawnBubu();
     }
   } else {
-    bubu.x -= 1.8;
-    // Check collision with player
+    bubu.x -= 1.6;
+    updateBubuSprite();
+
     const px = player.x, py = player.y;
-    if (Math.abs(bubu.x - px) < 50 && Math.abs(bubu.y - py) < 50) {
+    if (Math.abs(bubu.x - px) < 55 && Math.abs(bubu.y - py) < 60) {
       sfxPowerUp();
       if (bubu.type === 'shield') {
-        invincible = 300; // 5 sec shield
+        invincible = 300;
         spawnParticles(bubu.x, bubu.y, '#87ceeb', 20);
       } else {
-        // Magnet: convert all current bad items to good
         items.forEach(it => {
           if (it.type === 'bad') {
             it.type = 'good';
@@ -586,157 +609,75 @@ function update() {
         spawnParticles(bubu.x, bubu.y, '#ffd700', 20);
       }
       bubu = null;
-    } else if (bubu.x < -60) {
+      bubuSprite.style.display = 'none';
+      bubuLabel.style.display = 'none';
+    } else if (bubu.x < -80) {
       bubu = null;
+      bubuSprite.style.display = 'none';
+      bubuLabel.style.display = 'none';
     }
   }
 
-  // Update particles
-  for (let p of particles) {
-    p.x += p.vx;
-    p.y += p.vy;
-    p.life -= p.decay;
-  }
+  // Particles
+  for (let p of particles) { p.x += p.vx; p.y += p.vy; p.life -= p.decay; }
   particles = particles.filter(p => p.life > 0);
 
-  // Update clouds
-  for (let c of clouds) {
-    c.x += c.speed;
-    if (c.x > W + c.w) c.x = -c.w;
-  }
+  // Clouds
+  for (let c of clouds) { c.x += c.speed; if (c.x > W + c.w) c.x = -c.w; }
+
+  updateHUD();
 }
 
 // ═══════════════════════════════════════
-//  RENDER
+//  CANVAS RENDER (background + items)
 // ═══════════════════════════════════════
-function drawBackground() {
-  // Sky gradient
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#e8f4f8');
-  grad.addColorStop(0.5, '#fce4ec');
-  grad.addColorStop(1, '#f8e8f0');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
+function render() {
+  ctx.clearRect(0, 0, W, H);
 
   // Clouds
   for (let c of clouds) {
     ctx.fillStyle = `rgba(255,255,255,${c.alpha})`;
     ctx.beginPath();
-    ctx.ellipse(c.x, c.y, c.w / 2, c.h / 2, 0, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.ellipse(c.x, c.y, c.w / 2, c.h / 2, 0, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(c.x - c.w * 0.25, c.y + c.h * 0.1, c.w * 0.3, c.h * 0.35, 0, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.ellipse(c.x - c.w * 0.25, c.y + c.h * 0.1, c.w * 0.3, c.h * 0.35, 0, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(c.x + c.w * 0.25, c.y + c.h * 0.05, c.w * 0.3, c.h * 0.35, 0, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.ellipse(c.x + c.w * 0.25, c.y + c.h * 0.05, c.w * 0.3, c.h * 0.35, 0, 0, Math.PI * 2); ctx.fill();
   }
-}
 
-function drawGround() {
-  // Soft ground
+  // Ground
   ctx.fillStyle = '#e8d8d8';
-  ctx.fillRect(0, H * 0.92, W, H * 0.08);
-  // Gradient line
-  const grad = ctx.createLinearGradient(0, H * 0.91, 0, H * 0.93);
+  ctx.fillRect(0, H * 0.93, W, H * 0.07);
+  const grad = ctx.createLinearGradient(0, H * 0.92, 0, H * 0.94);
   grad.addColorStop(0, 'rgba(200,170,170,0)');
-  grad.addColorStop(0.5, 'rgba(200,170,170,0.5)');
+  grad.addColorStop(0.5, 'rgba(200,170,170,0.4)');
   grad.addColorStop(1, 'rgba(200,170,170,0)');
   ctx.fillStyle = grad;
-  ctx.fillRect(0, H * 0.91, W, H * 0.02);
-}
+  ctx.fillRect(0, H * 0.92, W, H * 0.02);
 
-function drawHUD() {
-  // Score
-  ctx.fillStyle = '#c07080';
-  ctx.font = `bold ${W * 0.045}px "PingFang SC","Microsoft YaHei",sans-serif`;
-  ctx.textAlign = 'left';
-  ctx.fillText('💛 ' + score, 12, 35);
-
-  // Lives
-  ctx.textAlign = 'right';
-  let heartsStr = '';
-  for (let i = 0; i < lives; i++) heartsStr += '❤️';
-  for (let i = lives; i < 3; i++) heartsStr += '🖤';
-  ctx.font = `${W * 0.05}px sans-serif`;
-  ctx.fillText(heartsStr, W - 12, 35);
-
-  // Shield indicator
-  if (invincible > 0) {
-    ctx.fillStyle = 'rgba(135,206,235,0.6)';
-    ctx.textAlign = 'center';
-    ctx.font = `${W * 0.035}px "PingFang SC","Microsoft YaHei",sans-serif`;
-    ctx.fillText('🛡️ 护盾 ' + Math.ceil(invincible / 60) + 's', W / 2, 35);
-  }
-}
-
-function drawPlayer() {
-  // Invincibility blink
-  if (invincible > 0 && Math.floor(invincible / 6) % 2 === 0) return;
-  drawYier(player.x, player.y, player.baseSize);
-}
-
-function drawItems() {
+  // Items
   for (let item of items) {
     ctx.save();
-    ctx.globalAlpha = item.alpha;
+    if (item.type === 'bad') {
+      ctx.fillStyle = 'rgba(0,0,0,0.06)';
+      ctx.beginPath();
+      ctx.arc(item.x, item.y, item.size * 0.5, 0, Math.PI * 2); ctx.fill();
+    }
     ctx.font = `${item.size}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-
-    if (item.type === 'bad') {
-      // Darker background for bad items
-      ctx.fillStyle = 'rgba(0,0,0,0.08)';
-      ctx.beginPath();
-      ctx.arc(item.x, item.y, item.size * 0.55, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
     ctx.fillText(item.template.emoji, item.x, item.y);
     ctx.restore();
   }
-}
 
-function drawBubuPowerUp() {
-  if (!bubu) return;
-  ctx.save();
-  ctx.globalAlpha = bubu.alpha;
-  drawBubu(bubu.x, bubu.y, bubu.size);
-
-  // Label
-  ctx.fillStyle = '#8b4513';
-  ctx.font = `${W * 0.03}px "PingFang SC","Microsoft YaHei",sans-serif`;
-  ctx.textAlign = 'center';
-  const label = bubu.type === 'shield' ? '🛡️护盾' : '🧲磁铁';
-  ctx.fillText(label, bubu.x, bubu.y - bubu.size * 0.6);
-
-  ctx.restore();
-}
-
-function drawParticles() {
+  // Particles
   for (let p of particles) {
-    ctx.fillStyle = p.color.replace(')', `,${p.life})`).replace('rgb', 'rgba');
-    if (p.color.startsWith('#')) {
-      ctx.globalAlpha = p.life;
-      ctx.fillStyle = p.color;
-    }
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2); ctx.fill();
   }
   ctx.globalAlpha = 1;
-}
-
-function render() {
-  ctx.clearRect(0, 0, W, H);
-
-  drawBackground();
-  drawItems();
-  drawPlayer();
-  drawBubuPowerUp();
-  drawParticles();
-  drawGround();
-  drawHUD();
 }
 
 // ═══════════════════════════════════════
@@ -753,10 +694,11 @@ function gameLoop() {
 // ═══════════════════════════════════════
 resetPlayer();
 initClouds();
-gameLoop();
-
-// Show high score on start screen
+bubuSprite.style.display = 'none';
+bubuLabel.style.display = 'none';
 document.getElementById('high-score-text').textContent = '最高纪录：' + highScore;
+resize();
+gameLoop();
 </script>
 </body>
 </html>
